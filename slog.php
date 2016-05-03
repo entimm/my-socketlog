@@ -208,6 +208,8 @@ class Slog
 
     public static function error_handler($errno, $errstr, $errfile, $errline)
     {
+        $cur_error_report = error_reporting();
+        if(!($errno & $cur_error_report)) return;
         switch($errno){
             case E_WARNING: $severity = 'E_WARNING'; break;
             case E_NOTICE: $severity = 'E_NOTICE'; break;
