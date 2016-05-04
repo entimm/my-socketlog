@@ -5,3 +5,5 @@
 2. 对于多个独立的 PHP 文件来说，则通过向 .htaccess 加入 `auto_prepend_file` 规则即可
 
 3. 默认 socketlog 会把所有错误类型都输出来，当时我只想根据当前所设置的 `error_report` 输出,所以在 `slog.php` 中加了 2 行代码
+
+4. 将所有的代码集中到一个文件 `socketlog.php`,方便快速引入，于是服务器端代码调试时，只需要上传这1个文件即可开启 socketlog 调试
