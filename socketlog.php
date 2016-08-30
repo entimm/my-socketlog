@@ -1,12 +1,11 @@
 <?php
-
 class Slog
 {
     public static $start_time=0;
     public static $start_memory=0;
     public static $port=1116;//SocketLog 服务的http的端口号
     public static $log_types=array('log','info','error','warn','table','group','groupCollapsed','groupEnd','alert');
-    
+
     protected static $_allowForceClientIds = array();    //配置强制推送且被授权的client_id
 
     protected static $_instance;
@@ -35,6 +34,7 @@ class Slog
 
     public static function __callStatic($method,$args)
     {
+
         if(in_array($method,self::$log_types))
         {
             array_unshift($args,$method);
@@ -42,32 +42,30 @@ class Slog
         }
     }
 
-   public static function sql($sql,$link)
+    public static function sql($sql,$link)
     {
         if(is_object($link) && 'mysqli'==get_class($link))
         {
-               return self::mysqlilog($sql,$link);
+            return self::mysqlilog($sql,$link);
         }
 
         if(is_resource($link) && ('mysql link'==get_resource_type($link) || 'mysql link persistent'==get_resource_type($link)))
         {
-               return self::mysqllog($sql,$link);
+            return self::mysqllog($sql,$link);
         }
 
 
         if(is_object($link) && 'PDO'==get_class($link))
         {
-               return self::pdolog($sql,$link);
+            return self::pdolog($sql,$link);
         }
 
         throw new Exception('SocketLog can not support this database link');
-    }    
-
-
+    }
 
     public static function big($log)
     {
-            self::log($log,'font-size:20px;color:red;');
+        self::log($log,'font-size:20px;color:red;');
     }
 
     public static function trace($msg,$trace_level=1,$css='')
@@ -97,7 +95,6 @@ class Slog
         self::groupEnd();
     }
 
-
     public static function mysqlilog($sql,$db)
     {
         if(!self::check())
@@ -117,7 +114,6 @@ class Slog
         self::trace($sql,2,$css);
     }
 
-
     public static function mysqllog($sql,$db)
     {
         if(!self::check())
@@ -136,7 +132,6 @@ class Slog
         self::sqlwhere($sql,$css);
         self::trace($sql,2,$css);
     }
-
 
     public static function pdolog($sql,$pdo)
     {
@@ -168,25 +163,25 @@ class Slog
         $arr = array_change_key_case($arr, CASE_LOWER);
         if(false!==strpos($arr['extra'],'Using filesort'))
         {
-              $sql.=' <---################[Using filesort]';
-              $css=self::$css['sql_warn'];
+            $sql.=' <---################[Using filesort]';
+            $css=self::$css['sql_warn'];
         }
         if(false!==strpos($arr['extra'],'Using temporary'))
         {
-              $sql.=' <---################[Using temporary]';
-              $css=self::$css['sql_warn'];
+            $sql.=' <---################[Using temporary]';
+            $css=self::$css['sql_warn'];
         }
     }
+
     private static function sqlwhere(&$sql,&$css)
     {
         //判断sql语句是否有where
         if(preg_match('/^UPDATE |DELETE /i',$sql) && !preg_match('/WHERE.*(=|>|<|LIKE|IN)/i',$sql))
         {
-           $sql.='<---###########[NO WHERE]';
-           $css=self::$css['sql_warn'];
+            $sql.='<---###########[NO WHERE]';
+            $css=self::$css['sql_warn'];
         }
     }
-
 
     /**
      * 接管报错
@@ -205,7 +200,7 @@ class Slog
     public static function error_handler($errno, $errstr, $errfile, $errline)
     {
         $cur_error_report = error_reporting();
-        if(!($errno & $cur_error_report)) return;
+        if(!($errno & $cur_error_report)) return false;
         switch($errno){
             case E_WARNING: $severity = 'E_WARNING'; break;
             case E_NOTICE: $severity = 'E_NOTICE'; break;
@@ -225,6 +220,7 @@ class Slog
         }
         $msg="{$severity}: {$errstr} in {$errfile} on line {$errline} -- SocketLog error handler";
         self::trace($msg,2,self::$css['error_handler']);
+        return true;
     }
 
     public static function fatalError()
@@ -232,12 +228,10 @@ class Slog
         // 保存日志记录
         if ($e = error_get_last())
         {
-                self::error_handler($e['type'],$e['message'],$e['file'],$e['line']);
-                self::sendLog();//此类终止不会调用类的 __destruct 方法，所以此处手动sendLog
+            $report = self::error_handler($e['type'],$e['message'],$e['file'],$e['line']);
+            $report && self::sendLog();//此类终止不会调用类的 __destruct 方法，所以此处手动sendLog
         }
     }
-
-
 
     public static function getInstance()
     {
@@ -247,7 +241,6 @@ class Slog
         return self::$_instance;
     }
 
-
     protected static function check()
     {
         if(!self::getConfig('enable'))
@@ -255,7 +248,7 @@ class Slog
             return false;
         }
         $tabid=self::getClientArg('tabid');
-         //是否记录日志的检查
+        //是否记录日志的检查
         if(!$tabid && !self::getConfig('force_client_ids'))
         {
             return false;
@@ -283,7 +276,7 @@ class Slog
         return true;
     }
 
-    protected static function getClientArg($name)
+    public static function getClientArg($name)
     {
         static $args=array();
 
@@ -313,14 +306,13 @@ class Slog
         return null;
     }
 
-
     //设置配置
     public static function  config($config)
     {
         $config=array_merge(self::$config,$config);
         if(isset($config['force_client_id'])){
             //兼容老配置
-            $config['force_client_ids']=array_merge($config['force_client_ids'],array($config['force_client_id'])); 
+            $config['force_client_ids']=array_merge($config['force_client_ids'],array($config['force_client_id']));
         }
         self::$config=$config;
         if(self::check())
@@ -339,7 +331,6 @@ class Slog
         }
     }
 
-
     //获得配置
     public static function  getConfig($name)
     {
@@ -355,7 +346,6 @@ class Slog
         {
             return ;
         }
-
         self::$logs[]=array(
             'type'=>$type,
             'msg'=>$msg,
@@ -380,7 +370,7 @@ class Slog
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         $headers=array(
-                 "Content-Type: application/json;charset=UTF-8"
+            "Content-Type: application/json;charset=UTF-8"
         );
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);//设置header
         $txt = curl_exec($ch);
@@ -417,34 +407,46 @@ class Slog
             $current_uri="cmd:".implode(' ',$_SERVER['argv']);
         }
         array_unshift(self::$logs,array(
-                'type'=>'group',
-                'msg'=>$current_uri.$time_str.$memory_str,
-                'css'=>self::$css['page']
+            'type'=>'group',
+            'msg'=>$current_uri.$time_str.$memory_str,
+            'css'=>self::$css['page']
         ));
 
         if(self::getConfig('show_included_files'))
         {
             self::$logs[]=array(
-                    'type'=>'groupCollapsed',
-                    'msg'=>'included_files',
-                    'css'=>''
+                'type'=>'groupCollapsed',
+                'msg'=>'included_files',
+                'css'=>''
             );
             self::$logs[]=array(
-                    'type'=>'log',
-                    'msg'=>implode("\n",get_included_files()),
-                    'css'=>''
+                'type'=>'log',
+                'msg'=>implode("\n",get_included_files()),
+                'css'=>''
             );
             self::$logs[]=array(
-                    'type'=>'groupEnd',
-                    'msg'=>'',
-                    'css'=>'',
-            );
-        }
-
-        self::$logs[]=array(
                 'type'=>'groupEnd',
                 'msg'=>'',
                 'css'=>'',
+            );
+        }
+
+        $request = array(
+            'get' => isset($_GET) ? $_GET : null,
+            'post' => isset($_POST) ? $_POST : null,
+            'session' => isset($_SESSION) ? $_SESSION : null,
+            'cookie' => isset($_COOKIE) ? $_COOKIE : null
+        );
+        self::$logs[] = array(
+            'type' => 'log',
+            'msg' => $request,
+            'css' => ''
+        );
+
+        self::$logs[]=array(
+            'type'=>'groupEnd',
+            'msg'=>'',
+            'css'=>'',
         );
 
         $tabid=self::getClientArg('tabid');
@@ -462,6 +464,7 @@ class Slog
         } else {
             self::sendToClient($tabid, $client_id, self::$logs, '');
         }
+        self::$logs = array();
     }
 
     /**
@@ -473,15 +476,16 @@ class Slog
      * @param $force_client_id
      */
     protected static function sendToClient($tabid, $client_id, $logs, $force_client_id) {
-         $logs=array(
+        $logs=array(
             'tabid'=>$tabid,
             'client_id'=>$client_id,
             'logs'=>$logs,
             'force_client_id'=>$force_client_id,
-        ); 
+        );
+        // echo PHP_EOL.'send';
         $msg=@json_encode($logs);
         $address='/'.$client_id; //将client_id作为地址， server端通过地址判断将日志发布给谁
-        self::send(self::getConfig('host'),$msg,$address); 
+        self::send(self::getConfig('host'),$msg,$address);
     }
 
     public function __destruct()
@@ -498,39 +502,45 @@ function slog($log,$type='log',$css='')
         $type=preg_replace_callback('/_([a-zA-Z])/',create_function('$matches', 'return strtoupper($matches[1]);'),$type);
         if(method_exists('Slog',$type) || in_array($type,Slog::$log_types))
         {
-           return  call_user_func(array('Slog',$type),$log,$css);
+            return  call_user_func(array('Slog',$type),$log,$css);
         }
     }
 
     if(is_object($type) && 'mysqli'==get_class($type))
     {
-           return Slog::mysqlilog($log,$type);
+        return Slog::mysqlilog($log,$type);
     }
 
     if(is_resource($type) && ('mysql link'==get_resource_type($type) || 'mysql link persistent'==get_resource_type($type)))
     {
-           return Slog::mysqllog($log,$type);
+        return Slog::mysqllog($log,$type);
     }
 
 
     if(is_object($type) && 'PDO'==get_class($type))
     {
-           return Slog::pdolog($log,$type);
+        return Slog::pdolog($log,$type);
     }
 
     throw new Exception($type.' is not SocketLog method');
 }
 
+function slogname($name, $log, $type='log', $css='')
+{
+    slog($name, 'info', 'color:#ff2d6d;font-weight:bolder;font-size:1.2em');
+    slog($log, $type, $css);
+}
+
 // ws://localhost:1229
 // client_id：slog_660c28
-// 
+//
 // ws://slog.thinkphp.cn:1229
 // client_id：slog_660c28
-// 
+//
 // 本地执行：socketlog-server
 // 本地后台执行：socketlog-server > /dev/null &
 // 需开启1229和1116两个端口
-// 
+//
 // 还可以用它来分析开源程序，分析SQL性能，结合taint分析程序漏洞
 //  taint能自动检测出xss，sql注入， 如果只用php taint， 它warning报错只告诉了变量输出的地方，并不知道变量在那里赋值、怎么传递。
 //  通过SocketLog， 能看到调用栈，轻松对有问题变量进行跟踪。
@@ -538,20 +548,74 @@ function slog($log,$type='log',$css='')
 ini_set( 'display_errors', 'On' );
 error_reporting(E_ALL ^ E_NOTICE);
 
+function getUrlExt($url){
+    $arr = parse_url($url);
+    $file = basename($arr['path']);
+    $ext = explode(".",$file);
+    return $ext[1];
+}
+
+function array_only($array, $keys)
+{
+    return array_intersect_key($array, array_flip((array) $keys));
+}
+
+if(isset($_SERVER['HTTP_HOST']))
+{
+    $current_uri=$_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    $ext = getUrlExt($current_uri);
+    if(in_array($ext, array('ico', 'png', 'jpg'))) {
+        exit;
+    }
+
+}
+
+// 命令行下使用
+if(!isset($_SERVER['HTTP_HOST']))
+{
+    if(isset($argv[2]))
+    {
+        define('SLOG_CLIENT_ID', $argv[2]);
+    }
+}
+
+if(!defined('SLOG_CLIENT_ID')) {
+    if(isset($_GET['debug_client']))
+    {
+        define('SLOG_CLIENT_ID', $_GET['debug_client']);
+    } else {
+        $client_id = Slog::getClientArg('client_id') ?: '';
+        if($client_id) {
+            define('SLOG_CLIENT_ID', $client_id);
+        }
+    }
+}
+
 slog(array(
     'enable'              => true,                 // 是否打印日志的开关
-    'host'                => 'slog.thinkphp.cn',   // websocket服务器地址，默认localhost | slog.thinkphp.cn
+    'host'                => '192.168.1.10',   // websocket服务器地址，默认localhost | slog.thinkphp.cn
     'optimize'            => true,                 // 是否显示利于优化的参数，如运行时间，消耗内存等，默认为false
     'show_included_files' => true,                 // 是否显示本次程序运行加载了哪些文件，默认为false
     'error_handler'       => true,                 // 是否接管程序错误，将程序错误显示在console中，默认为false
-    'force_client_ids'    => array('slog_660c28'), // 日志强制记录到配置的client_id,默认为空
-    'allow_client_ids'    => array('slog_660c28')  //限制允许读取日志的client_id，默认为空,表示所有人都可以获得日志。
+    'force_client_ids'    => array(), // 日志强制记录到配置的client_id,默认为空
+    'allow_client_ids'    => array()  //限制允许读取日志的client_id，默认为空,表示所有人都可以获得日志。
 ),'config');
 
+if($_POST['FORCE_DEBUG']) {
+    if(!defined('SLOG_CLIENT_ID')) {
+        define('SLOG_CLIENT_ID', $_POST['FORCE_DEBUG']);
+    }
+    $force = array();
+    slog(array('force_client_ids' => array($_POST['FORCE_DEBUG'])), 'config');
+    slog($_POST);
+}
+
 slog('time = '.date('H:i:s').', IP = '.$_SERVER["REMOTE_ADDR"],'log','color:#4E17FF;font-size:12px;');
-slog('user_agent = '.$_SERVER['HTTP_USER_AGENT']);
-session_start();
-slog(array('get' => $_GET, 'post' => $_POST, 'session' => $_SESSION, 'cookie' => $_COOKIE));
+slogname('user_agent', $_SERVER['HTTP_USER_AGENT']);
+
+if($_POST['FRPC_METHOD']) {
+    slog($_SERVER['REQUEST_URI'] . '/App/Model' . str_replace('\\', '/', $_POST['FRPC_MODULE']) . ' @ ' . $_POST['FRPC_ACTION'], 'info', 'font-size:12px;color:#8e55f6');
+}
 
 // slog('msg','log');  //一般日志
 // slog('msg','error'); //错误日志
@@ -570,5 +634,5 @@ slog(array('get' => $_GET, 'post' => $_POST, 'session' => $_SESSION, 'cookie' =>
     $sql="SELECT * FROM `user`";
     slog($sql,$link);
 */
-// 注意，有时候在数据比较少的情况下，mysql查询不会使用索引，explain也会提示Using filesort等性能问题， 
+// 注意，有时候在数据比较少的情况下，mysql查询不会使用索引，explain也会提示Using filesort等性能问题，
 // 其实这时候并不是真正有性能问题， 你需要自行进行判断，或者增加更多的数据再测试。
