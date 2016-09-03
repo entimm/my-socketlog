@@ -1,4 +1,5 @@
 <?php
+
 class Slog
 {
     public static $start_time=0;
@@ -580,9 +581,9 @@ if(!isset($_SERVER['HTTP_HOST']))
 }
 
 if(!defined('SLOG_CLIENT_ID')) {
-    if(isset($_GET['debug_client']))
+    if(isset($_GET['debug']))
     {
-        define('SLOG_CLIENT_ID', $_GET['debug_client']);
+        define('SLOG_CLIENT_ID', $_GET['debug']);
     } else {
         $client_id = Slog::getClientArg('client_id') ?: '';
         if($client_id) {
@@ -605,10 +606,10 @@ if($_POST['FORCE_DEBUG']) {
     if(!defined('SLOG_CLIENT_ID')) {
         define('SLOG_CLIENT_ID', $_POST['FORCE_DEBUG']);
     }
-    $force = array();
-    slog(array('force_client_ids' => array($_POST['FORCE_DEBUG'])), 'config');
-    slog($_POST);
+    slogname('POST', $_POST);
 }
+
+slog(array('force_client_ids' => array(SLOG_CLIENT_ID)), 'config');
 
 slog('time = '.date('H:i:s').', IP = '.$_SERVER["REMOTE_ADDR"],'log','color:#4E17FF;font-size:12px;');
 slogname('user_agent', $_SERVER['HTTP_USER_AGENT']);
