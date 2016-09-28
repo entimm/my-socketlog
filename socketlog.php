@@ -553,13 +553,13 @@ function getUrlExt($url){
     $arr = parse_url($url);
     $file = basename($arr['path']);
     $ext = explode(".",$file);
-    return $ext[1];
+    return empty($ext[1]) ? '' : $ext[1];
 }
 
-function array_only($array, $keys)
-{
-    return array_intersect_key($array, array_flip((array) $keys));
-}
+// function array_only($array, $keys)
+// {
+//     return array_intersect_key($array, array_flip((array) $keys));
+// }
 
 if(isset($_SERVER['HTTP_HOST']))
 {
@@ -578,6 +578,9 @@ if(!isset($_SERVER['HTTP_HOST']))
     {
         define('SLOG_CLIENT_ID', $argv[2]);
     }
+} else {
+    slogname('user_agent', $_SERVER['HTTP_USER_AGENT']);
+    slog('time = '.date('H:i:s').', IP = '.$_SERVER["REMOTE_ADDR"],'log','color:#4E17FF;font-size:12px;');
 }
 
 if(!defined('SLOG_CLIENT_ID')) {
@@ -594,7 +597,7 @@ if(!defined('SLOG_CLIENT_ID')) {
 
 slog(array(
     'enable'              => true,                 // 是否打印日志的开关
-    'host'                => '192.168.1.10',   // websocket服务器地址，默认localhost | slog.thinkphp.cn
+    'host'                => 'slog.thinkphp.cn',   // websocket服务器地址，默认localhost | slog.thinkphp.cn
     'optimize'            => true,                 // 是否显示利于优化的参数，如运行时间，消耗内存等，默认为false
     'show_included_files' => true,                 // 是否显示本次程序运行加载了哪些文件，默认为false
     'error_handler'       => true,                 // 是否接管程序错误，将程序错误显示在console中，默认为false
@@ -602,19 +605,18 @@ slog(array(
     'allow_client_ids'    => array()  //限制允许读取日志的client_id，默认为空,表示所有人都可以获得日志。
 ),'config');
 
-if($_POST['FORCE_DEBUG']) {
+if(! empty($_POST['FORCE_DEBUG'])) {
     if(!defined('SLOG_CLIENT_ID')) {
         define('SLOG_CLIENT_ID', $_POST['FORCE_DEBUG']);
     }
     slogname('POST', $_POST);
 }
-
+if(!defined('SLOG_CLIENT_ID')) {
+    define('SLOG_CLIENT_ID', 'entimm');
+}
 slog(array('force_client_ids' => array(SLOG_CLIENT_ID)), 'config');
 
-slog('time = '.date('H:i:s').', IP = '.$_SERVER["REMOTE_ADDR"],'log','color:#4E17FF;font-size:12px;');
-slogname('user_agent', $_SERVER['HTTP_USER_AGENT']);
-
-if($_POST['FRPC_METHOD']) {
+if(!empty($_POST['FRPC_METHOD'])) {
     slog($_SERVER['REQUEST_URI'] . '/App/Model' . str_replace('\\', '/', $_POST['FRPC_MODULE']) . ' @ ' . $_POST['FRPC_ACTION'], 'info', 'font-size:12px;color:#8e55f6');
 }
 
